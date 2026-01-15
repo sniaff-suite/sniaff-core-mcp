@@ -1,8 +1,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import { SessionState, AndroidState, MitmState } from '../types/session.js';
 import { CoreError, ErrorCode } from '../types/errors.js';
 import { Logger } from '../utils/logger.js';
+
+const execPromise = promisify(exec);
 
 const STATE_FILE = 'state.json';
 
@@ -140,6 +144,12 @@ export class StateManager {
 
   async deleteSession(sessionId: string): Promise<void> {
     const sessionDir = this.getSessionDir(sessionId);
+
+    // Stop and remove any Docker container associated with this session
+    // This must happen BEFORE deleting the directory because the revdocker folder
+    // is mounted as a volume in the container
+    await this.cleanupDockerContainer(sessionId);
+
     try {
       await fs.promises.rm(sessionDir, { recursive: true, force: true });
       this.logger.info('Deleted session directory', { sessionId });
@@ -149,6 +159,28 @@ export class StateManager {
         `Failed to delete session directory: ${error instanceof Error ? error.message : String(error)}`,
         { sessionId, sessionDir }
       );
+    }
+  }
+
+  /**
+   * Cleanup Docker container for a session.
+   * This is called before deleting the session directory to ensure
+   * the revdocker volume mount doesn't block directory deletion.
+   */
+  private async cleanupDockerContainer(sessionId: string): Promise<void> {
+    const containerName = `sniaff-revdocker-${sessionId}`;
+
+    try {
+      // Force stop and remove the container in one command
+      await execPromise(`docker rm -f ${containerName}`);
+      this.logger.info('Removed Docker container', { sessionId, containerName });
+    } catch (error) {
+      // Container might not exist - that's OK, just log at debug level
+      this.logger.debug('No Docker container to cleanup (may not exist)', {
+        sessionId,
+        containerName,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 }
