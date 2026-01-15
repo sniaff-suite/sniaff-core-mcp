@@ -22,6 +22,15 @@ export interface MitmState {
   error?: string;
 }
 
+export interface RevDockerState {
+  status: 'pending' | 'starting' | 'ready' | 'stopped' | 'error';
+  containerId?: string;
+  containerName?: string;
+  workspacePath?: string;
+  startedAt?: string;
+  error?: string;
+}
+
 export interface SessionState {
   sessionId: string;
   type: SessionType;
@@ -30,6 +39,7 @@ export interface SessionState {
   stoppedAt?: string;
   android?: AndroidState;
   mitm?: MitmState;
+  revdocker?: RevDockerState;
 }
 
 export interface SessionInfo {
