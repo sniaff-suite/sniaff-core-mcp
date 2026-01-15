@@ -1,3 +1,4 @@
+import * as path from 'path';
 import { StateManager } from './state-manager.js';
 import { SessionState, SessionType, SessionInfo } from '../types/session.js';
 import { CoreError, ErrorCode } from '../types/errors.js';
@@ -39,6 +40,10 @@ export class SessionRegistry {
 
     await this.stateManager.write(sessionId, state);
 
+    // Register session-specific log file (core logs go in sessionId/core/)
+    const coreLogsDir = path.join(sessionPath, 'core');
+    await this.logger.registerSessionLog(sessionId, coreLogsDir);
+
     this.logger.info('Session created', { sessionId, type, sessionPath });
 
     return {
@@ -74,6 +79,9 @@ export class SessionRegistry {
     });
 
     this.logger.info('Session marked as stopping', { sessionId });
+
+    // Unregister session log before cleanup
+    this.logger.unregisterSessionLog(sessionId);
 
     // Cleanup session directory if requested
     if (cleanup) {
@@ -130,6 +138,8 @@ export class SessionRegistry {
 
     for (const session of sessions) {
       try {
+        // Unregister session log before cleanup
+        this.logger.unregisterSessionLog(session.sessionId);
         await this.stateManager.deleteSession(session.sessionId);
         this.logger.info('Cleaned up session', { sessionId: session.sessionId });
       } catch (error) {

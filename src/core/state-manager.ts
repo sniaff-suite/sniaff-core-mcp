@@ -24,10 +24,10 @@ export class StateManager {
     const sessionDir = this.getSessionDir(sessionId);
     try {
       await fs.promises.mkdir(sessionDir, { recursive: true });
-      // Create subdirectories for android and mitm
+      // Create subdirectories for each MCP
       await fs.promises.mkdir(path.join(sessionDir, 'android'), { recursive: true });
       await fs.promises.mkdir(path.join(sessionDir, 'mitm'), { recursive: true });
-      await fs.promises.mkdir(path.join(sessionDir, 'logs'), { recursive: true });
+      await fs.promises.mkdir(path.join(sessionDir, 'core'), { recursive: true });
       this.logger.info('Created session directory', { sessionId, sessionDir });
       return sessionDir;
     } catch (error) {
